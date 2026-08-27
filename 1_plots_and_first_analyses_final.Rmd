@@ -1,0 +1,363 @@
+---
+title: "1_plots_and_first_analyses"
+date: "2024-04-12"
+output: html_document
+---
+
+```{r Packages}
+library(tidyverse)
+library(readr)
+library(vegan)
+library(ggvenn)
+library(ggpubr)
+library(EnvStats)
+library(patchwork)
+library(UpSetR)
+
+```
+
+```{loading data}
+
+new_otu <- read_csv("new_otu.csv", col_types = cols(...1 = col_skip()))
+
+
+meta <- read_csv("meta.csv", col_types = cols(...1 = col_skip()))
+
+
+new_taxa <- read_csv("new_taxa.csv", col_types = cols(...1 = col_skip()))
+
+
+
+```{r raw specnum and adding to meta}
+
+raw_spec_num <- new_otu %>% 
+  column_to_rownames(., var = "sample") %>% 
+  specnumber() %>% 
+  enframe() %>% 
+  rename(sample = name,
+         sr = value)
+
+meta <- meta %>% 
+  left_join(.,raw_spec_num)
+
+```
+
+```{Venn plots with the methods}
+
+venn_otu_wipe <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Wipe") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_fake <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Fake flower") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_malaise <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Malaise") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_netting <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Netting") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_yellow <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Yellow") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_plant <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","method"), by = "sample") %>% 
+  filter(method == "Plant") %>% 
+  select(-"sample",-"method") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_data_fakenadyellow <- list("Fake Flower" = venn_otu_fake, "Yellow" = venn_otu_yellow)
+
+venn_data_nwpa <- list("Netting" = venn_otu_netting, "Wipe" = venn_otu_wipe, "Plant" = venn_otu_plant)
+
+forcowplot_fakeandyellow<-ggvenn(data = venn_data_fakenadyellow, show_percentage = F, fill_color = c("#E69F00","#F0E442"),fill_alpha = .5,text_size = 6, set_name_size = 6)
+
+forcowplot_nwpa<-ggvenn(data = venn_data_nwpa , show_percentage = F, fill_color = c("#CC79A7","#999999","#999903"),fill_alpha = .5,text_size = 6, set_name_size = 6)
+
+venn_otu_sugar <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","infos"), by = "sample") %>% 
+  filter(infos == "with sugar") %>% 
+  select(-"sample",-"infos") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_otu_no_sugar <- new_otu %>% 
+  inner_join(meta %>%  
+  select ("sample","infos"), by = "sample") %>% 
+  filter(infos == "no sugar") %>% 
+  select(-"sample",-"infos") %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  filter(. != "0") %>% 
+  rownames_to_column("otu_id") %>% 
+  select(otu_id) %>% 
+  unlist() %>% 
+  as.character()
+
+venn_data_sugarornot <- list("Fake Flower (soaked with sugar)" = venn_otu_sugar, "Fake Flower (no sugar)" = venn_otu_no_sugar, "Yellow Trap" = venn_otu_yellow)
+
+ggvenn(data = venn_data_sugarornot, show_percentage = F, fill_color = c("red","orange","yellow"),fill_alpha = .5,text_size = 6, set_name_size = 5)
+
+
+```
+
+```{NMDS}
+
+set.seed(8)
+
+nmds <- new_otu %>%  
+  left_join(meta,by = "sample") %>% 
+  select(sample, contains("otu")) %>% 
+  column_to_rownames(., var = "sample") %>% 
+  vegan::metaMDS(distance = "jaccard", k = 2, binary = T, trymax = 999)
+
+NMDSscores <- scores(nmds, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("sample") %>% 
+  left_join(meta,., by = "sample")%>% 
+  drop_na(NMDS1)%>% 
+  drop_na(NMDS2)
+
+THIS TO EDIT nmds_group <- NMDSscores  %>% 
+  ggplot(aes(x = NMDS1, y = NMDS2, color = group)) +
+  geom_point(size=3) + 
+  stat_ellipse(aes(group = group), type = "norm", level = 0.95, geom = "path", alpha = 1, size = 1) +
+  theme_minimal() + annotate("text", x = Inf, y = -Inf, hjust = 1, vjust = 0,
+           label = paste("Stress:", round(nmds$stress, 4)))+
+theme(legend.text = element_text(size = 16),
+legend.title = element_text(size = 20))+
+theme(axis.text= element_text(size = 16),
+axis.title = element_text(size = 20))
+
+nmds_method <- NMDSscores  %>% 
+  ggplot(aes(x = NMDS1, y = NMDS2, color = method, shape=infos)) +
+  geom_point(size=3) + 
+  stat_ellipse(aes(group = method), type = "norm", level = 0.95, geom = "path", alpha = 1, size = 1) +
+  theme_minimal() + annotate("text", x = Inf, y = -Inf, hjust = 1, vjust = 0,
+           label = paste("Stress:", round(nmds$stress, 4)))+
+theme(legend.text = element_text(size = 16),
+legend.title = element_text(size = 20))+
+theme(axis.text= element_text(size = 16),
+axis.title = element_text(size = 20))
+
+
+```
+
+```{Mean plots}
+
+
+meanplot_ordered<-meta_final %>%
+mutate(method=factor(method, levels = c("Malaise", "Yellow",  "Fake flower", "Plant", "Wipe", "Netting"))) %>%
+arrange(method) %>%
+ggerrorplot(x = "method", y = "sr",
+desc_stat = "mean_sd",
+error.plot = "errorbar",            
+add = "mean"                        
+) +
+theme(legend.text = element_text(size = 16),
+legend.title = element_text(size = 20))+
+theme(axis.text= element_text(size = 16),
+axis.title = element_text(size = 20))+
+labs(y = "OTU richness",
+x = "Method") +
+stat_n_text()
+
+```
+
+```{bar chart}
+tax_order<- new_taxa %>% 
+  mutate(order = case_when(str_detect(class, "Collembola") ~ "Collembola",
+         TRUE ~ as.character(order))) %>%
+  mutate(order = case_when(str_detect(subclass, "Acari") ~ "Acari",
+         TRUE ~ as.character(order))) %>% 
+  filter(perc_id >= 90) %>% 
+  select(otu_id, order) %>%
+  mutate(otu_id = tolower(otu_id))
+
+rel_otu_num <- new_otu %>% 
+  pivot_longer(cols = -sample, names_to = "otu_id", values_to = "reads") %>% 
+     inner_join(tax_order, by = "query") %>%
+     drop_na(order) %>% 
+     mutate(order = factor(order)) %>% 
+     filter(reads > 0) %>%
+     group_by(sample, order) %>% 
+     summarise(n_queries = n_distinct(query), .groups = "drop") %>% 
+     group_by(sample) %>% 
+     mutate(proportion = n_queries / sum(n_queries)) %>% 
+     ungroup()
+
+
+####SET COLORS; COLORS ARE TAKEN FROM:
+#https://stackoverflow.com/questions/57153428/r-plot-color-combinations-that-are-colorblind-accessible#
+
+safe_colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499",
+"#44AA99", "#999903", "#882255", "#000000", "#888888", "#0072B2")
+
+###MAKE PICTURE
+a_cleaned_90percent<-rel_otu_num %>%
+left_join(meta_final) %>%
+na.omit() %>%
+select(sample, order, type, proportion) %>%
+group_by(type) %>%
+mutate(sum_time = sum(proportion)) %>%
+ungroup() %>%
+group_by(type, order) %>%
+mutate(rel_abund_time = sum(proportion)) %>%
+ungroup() %>%
+group_by(type,order) %>%
+summarize(rel_abund_time = mean(rel_abund_time/sum_time)) %>%
+mutate(order2 = case_when(rel_abund_time < .01 ~ "< 1% rel. number",
+TRUE ~ as.character(order))) %>%
+group_by(order2,type) %>% summarise(rel_abund_time  = sum(rel_abund_time)) %>%
+ggplot() +
+geom_col(aes(x = type, y = rel_abund_time, fill = order2), color = "black") +
+scale_fill_manual(values = safe_colorblind_palette) +
+theme_bw() +
+scale_y_continuous(labels = scales::percent_format())+
+xlab("Methods") +
+ylab("Relative number of OTUs (%)") +
+guides(fill=guide_legend(title="Taxa")) +
+theme(legend.text = element_text(size = 18),
+legend.title = element_text(size = 20))+
+theme(axis.text= element_text(size = 18),
+axis.title = element_text(size = 20))
+
+###write.csv(a_cleaned_90percent[["data"]], "rel_abund_1percent.csv")
+
+###for 100% species data; some stuff was BLASTed, so we knew what it was
+
+species_check <- new_taxa %>%
+mutate(species = case_when(str_detect(species, "Smittia sp. BIOUG21999-A08") ~ "Bryophaenocladius terrestris",
+TRUE ~ as.character(species))) %>%
+mutate(species = case_when(str_detect(species, "Athalia sp. O86") ~ "Athalia rosae",
+TRUE ~ as.character(species))) %>%
+filter(perc_id == 100) %>%
+select(otu_id, species) %>%
+mutate(otu_id = tolower(otu_id))
+
+rel_abund_species_sample <- new_otu %>%
+pivot_longer(cols = -sample, names_to = "otu_id", values_to = "reads") %>%
+left_join(species_check , by = "otu_id") %>%
+drop_na(species) %>%
+mutate(species = factor(species)) %>%
+group_by(sample, species) %>%
+summarise(read_species = sum(reads)) %>%
+ungroup() %>%
+group_by(sample) %>%
+mutate(read_sum = sum(read_species)) %>%
+ungroup() %>%
+group_by(sample, species) %>%
+summarise(rel_abund  = read_species/read_sum)
+
+species_method<-rel_abund_species_sample %>%
+left_join(meta) %>%
+filter(sample != "AFGr", sample != "AFGrO") %>%
+select(sample, species, method, rel_abund) %>%
+group_by(method) %>%
+mutate(sum_time = sum(rel_abund)) %>%
+ungroup() %>%
+group_by(method, species) %>%
+mutate(rel_abund_time = sum(rel_abund)) %>%
+ungroup() %>%
+group_by(method,species) %>%
+summarize(rel_abund_time = mean(rel_abund_time/sum_time))
+
+
+###figure with nmds; patchwork
+
+meanplot_ordered + nmds_method / a_cleaned_90percent
+
+```
+
+```{UpSet Plot}
+
+all_otus <- unique(unlist(venn_data_methods_pests))
+sets <- names(venn_data_methods_pests)
+
+upset_df <- data.frame(
+row.names = all_otus,
+sapply(sets, function(s) as.integer(all_otus %in% venn_data_methods_pests[[s]]))
+)
+
+###small change
+
+upset_df$"Fake Flower"<-upset_df$Fake.Flower
+
+upset_df$"Yellow pan trap"<-upset_df$Yellow.pan.trap
+
+upset_df<-upset_df %>% select(-Yellow.pan.trap, -Fake.Flower)
+
+###plot
+
+upset(
+upset_df,
+sets,               # the column names to use as sets
+min_size = 7
+)
+
+
+youwaupset<-upsetme + theme(text= element_text(size = 16),title = element_text(size = 16))
+
+

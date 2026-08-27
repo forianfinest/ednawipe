@@ -1,0 +1,75 @@
+---
+title: "2_statistical_analyses"
+date: "2024-04-12"
+output: html_document
+---
+
+```{PERMANOVA analyses}
+
+set.seed(8)
+
+library(vegan)
+library(tidyverse)
+library(pairwiseAdonis)
+
+###METHODS FIRST
+
+new_otu <- read_csv("new_otu.csv", col_types = cols(...1 = col_skip()))
+
+
+meta <- read_csv("meta.csv", col_types = cols(...1 = col_skip()))
+
+
+aaa <- new_otu %>% 
+  filter(sample != "AFGrO" & sample != "AFGr") %>% 
+  column_to_rownames("sample")
+
+raw_spec_num <- new_otu %>% 
+  column_to_rownames(., var = "sample") %>% 
+  specnumber() %>% 
+  enframe() %>% 
+  rename(sample = name,
+         sr = value)
+meta <- meta %>% 
+  left_join(.,raw_spec_num)
+
+
+posthoc_result_jaccard <- pairwise.adonis(aaa,meta$method, sim.method = "jaccard", p.adjust.m = "bonferroni")
+
+###write.csv(posthoc_result_jaccard, "permanova_pairwise_methods.csv")
+
+###INFOS
+
+posthoc_result_infos_jaccard <- pairwise.adonis(aaa,meta$infos, sim.method = "jaccard", p.adjust.m = "bonferroni")
+
+###write.csv(posthoc_result_infos_jaccard, "permanova_pairwise_infos.csv")
+
+
+```
+
+```{mean zotu richness - pairwise wilcox test}
+
+mean_zotur <- meta %>%
+  group_by(method) %>%
+  summarize(
+    Durchschnitt_SR = mean(sr),
+    SD_SR = sd(sr))
+
+pairwise_wilcox_methods <- pairwise.wilcox.test(meta$sr, meta$method, p.adjust.method = "bonferroni")
+
+print(pairwise_wilcox_methods)
+
+###CHECKING BY INFOS
+
+mean_zotur_infos <- meta %>%
+  group_by(infos) %>%
+  summarize(
+    Durchschnitt_SR = mean(sr),
+    SD_SR = sd(sr))
+
+pairwise_wilcox_infos <- pairwise.wilcox.test(meta$sr, meta$infos, p.adjust.method = "bonferroni")
+
+print(pairwise_wilcox_infos)
+
+
+```

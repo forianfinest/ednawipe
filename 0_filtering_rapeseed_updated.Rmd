@@ -1,0 +1,116 @@
+---
+title: "0_filtering_rapeseed"
+date: "2025-04-16"
+output: html_document
+---
+
+```{r Packages}
+library(tidyverse)
+library(purrr)
+library(scales)
+library(vegan)
+```
+
+###negative samples
+
+meta <- read_delim("meta.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+transposed_otu <- read_delim("transposed_otu.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+plusmeta_otu_sum <- transposed_otu %>%
+left_join(meta_merged, by = "sample")
+
+isoneg_samples<-plusmeta_otu_sum %>%
+filter(type=="isoneg")
+
+
+neg_samples<-plusmeta_otu_sum %>%
+filter(type=="neg")
+
+###negative threshold
+
+###isonegs
+
+isoneg_samples<-plusmeta_otu_sum %>%
+inner_join(isoneg_samples, by = "sample")
+
+max_isoneg<-apply(isoneg_samples[-c(1,1175)],2,max)
+
+plusmeta_otu_sum <- plusmeta_otu_sum %>%
+mutate(across(starts_with("OTU"),
+~ ifelse(. > max_isoneg[cur_column()], ., 0)))
+
+plusmeta_otu_sum <- plusmeta_otu_sum  %>%
+select(all_of(names(.)[1]), where(~ is.numeric(.) &&
+sum(., na.rm = TRUE) > 0))
+
+
+max_neg<-apply(neg_samples[-c(1,6408:6410)],2,max)
+
+otu_sum_translated_negremoved_plusmeta <- plusmeta_otu_sum %>%
+mutate(across(starts_with("OTU"),
+~ ifelse(. > max_neg[cur_column()], ., 0)))
+
+###no otu with 0
+
+otu_sum_translated_nootu_plusmeta  <- otu_sum_translated_negremoved_plusmeta %>%
+select(all_of(names(.)[1]), where(~ is.numeric(.) &&
+sum(., na.rm = TRUE) > 0))
+
+###filter arthropods
+
+otu_arthropoda <- taxa_id %>%
+    group_by(query) %>% 
+    filter(all(phylum == "Arthropoda")) %>% 
+    distinct(query, .keep_all = TRUE) %>% 
+    filter(perc_id >= 90) %>% 
+    filter(sbjct_len >= "55")
+
+
+###get samples with 1000 arthropod reads
+
+otu_tofiltarthropod <- read_delim("~/stuff/verylastedna/otu_tofiltarthropod.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+     
+otu_befiltarthropod <- otu_tofiltarthropod %>% inner_join(otu_arthropoda, by="query")
+
+otu_befiltarthropod <- otu_befiltarthropod[1:226]
+
+reg_otu_sum_nootu_nometa_more1000  <- otu_befiltarthropod   %>%
+select(all_of(names(.)[1]), where(~ is.numeric(.) &&
+sum(., na.rm = TRUE) > 1000))
+
+```{rarefaction curves}
+
+reg_otu_sum_nootu_nometa_more0  <- otu_befiltarthropod   %>%
+filter(rowSums(.[2:964]) > 0)
+
+rarecurves_dat <-reg_otu_sum_nootu_nometa_more0  %>%
+column_to_rownames(., var = "sample") %>%
+select(starts_with("otu")) %>%
+rarecurve(step = 100)
+
+rarecurve_df <- map_dfr(rarecurves_dat, bind_rows) %>%
+bind_cols(sample = reg_otu_sum_nootu_nometa_more0  [,1],.) %>%
+pivot_longer(-"sample") %>%
+drop_na() %>%
+mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
+select(-name) %>%
+left_join(.,meta, by = "sample")
+
+rarecurve_df %>%
+ggplot() +
+geom_vline(aes(xintercept = 1000),
+color = "darkblue",
+linetype = "longdash") +
+geom_line(aes(x = n_seqs, y = value, group = sample, colour = type)) +
+labs(x = "# of reads",
+y = "# of zOTUs",
+color = "Samples") +
+scale_x_continuous(
+labels = label_number(scale_cut = cut_short_scale())) +
+xlim(0, 4000) +
+theme_bw()
+
+
+```

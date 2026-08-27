@@ -1,0 +1,35 @@
+---
+title: "2_statistics_rapeseed"
+date: "2025-04-16"
+output: html_document
+---
+
+```{r Packages}
+library(tidyverse)
+library(pairwiseAdonis)
+```
+
+aaa <- otu_trans_1000 %>%
+column_to_rownames("sample")
+
+###ANALYSES PER METHOD
+
+posthoc_result_jaccard <- pairwise.adonis(aaa,meta_specnum$type, sim.method = "jaccard", p.adjust.m = "bonferroni")
+
+raw_spec_num <- otu_tab_1000 %>% 
+  column_to_rownames(., var = "sample") %>% 
+  specnumber() %>% 
+  enframe() %>% 
+  rename(sample = name,
+         sr = value)
+
+meta_final <- meta_final %>% 
+  left_join(.,raw_spec_num)
+
+mean_specnum <- meta_final %>%
+group_by(type) %>%
+summarize(
+Durchschnitt_SR = mean(sr),
+SD_SR = sd(sr))
+
+pairwise_wilcox_methoden <- pairwise.wilcox.test(meta_specnum$sr, meta_specnum$type, p.adjust.method = "bonferroni")
